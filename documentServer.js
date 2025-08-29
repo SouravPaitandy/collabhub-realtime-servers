@@ -3,6 +3,7 @@ const http = require('http');
 const { setupWSConnection } = require('y-websocket/bin/utils');
 const path = require('path');
 const fs = require('fs');
+const { Server } = require('socket.io'); // Import Socket.IO Server
 
 // Enable cross-origin support and production configuration
 const PORT = process.env.PORT || 8080;
@@ -39,8 +40,53 @@ server.on('request', (req, res) => {
   }
 });
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
+// --- START: NEW CHAT SERVER LOGIC ---
+const io = new Server(server, {
+  cors: {
+    origin: "*", // In production, restrict this to your app's URL
+    methods: ["GET", "POST"]
+  }
+});
+
+io.on('connection', (socket) => {
+  log(`Chat client connected: ${socket.id}`);
+
+  // User joins a collaboration-specific chat room
+  socket.on('join_room', (collabId) => {
+    socket.join(collabId);
+    log(`Socket ${socket.id} joined room: ${collabId}`);
+  });
+
+  // Listen for a new message from a client
+  socket.on('send_message', (data) => {
+    // Broadcast the message to all other clients in the same room
+    socket.to(data.collabId).emit('receive_message', data);
+  });
+
+  // --- START: NEW TYPING INDICATOR LOGIC ---
+
+  // Listen for a user typing
+  socket.on('typing', ({ collabId, user }) => {
+    socket.to(collabId).emit('user_typing', user);
+  });
+
+  // Listen for a user stopping typing
+  socket.on('stop_typing', ({ collabId, user }) => {
+    socket.to(collabId).emit('user_stopped_typing', user);
+  });
+
+  // --- END: NEW TYPING INDICATOR LOGIC ---
+
+  // Handle client disconnection
+  socket.on('disconnect', () => {
+    log(`Chat client disconnected: ${socket.id}`);
+  });
+});
+
+// --- END: NEW CHAT SERVER LOGIC ---
+
+// Create WebSocket server for Yjs
+const wss = new WebSocket.Server({ noServer: true }); // Important: use noServer
 
 // Add heartbeat interval for keeping connections alive
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
@@ -78,7 +124,7 @@ const log = (message) => {
 // Track client connections
 let connections = 0;
 
-// Handle WebSocket connections
+// Handle WebSocket connections for Yjs
 wss.on('connection', (conn, req) => {
   connections++;
 
@@ -108,6 +154,19 @@ wss.on('connection', (conn, req) => {
     connections--;
     log(`Connection closed. Active connections: ${connections}`);
   });
+});
+
+// Upgrade HTTP connections to WebSocket
+server.on('upgrade', (request, socket, head) => {
+  const { pathname } = new URL(request.url, `http://${request.headers.host}`);
+
+  // If the path is for Socket.IO, it's handled automatically.
+  // If it's for our Yjs WebSocket, we handle it here.
+  if (pathname !== '/socket.io/') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  }
 });
 
 const interval = setInterval(() => {
