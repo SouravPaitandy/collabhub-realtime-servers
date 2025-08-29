@@ -77,6 +77,12 @@ io.on('connection', (socket) => {
 
   // --- END: NEW TYPING INDICATOR LOGIC ---
 
+  // --- NEW: REACTION EVENT LISTENER ---
+  socket.on('send_reaction', (data) => {
+    // Broadcast the reaction to all clients in the room
+    socket.to(data.collabId).emit('receive_reaction', data);
+  });
+
   // Handle client disconnection
   socket.on('disconnect', () => {
     log(`Chat client disconnected: ${socket.id}`);
