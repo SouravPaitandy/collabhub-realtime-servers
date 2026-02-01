@@ -250,7 +250,7 @@ wss.on("connection", (conn, req) => {
 const { PeerServer } = require("peer");
 const peerServer = PeerServer({
   server: server,
-  path: "/peerjs",
+  path: "/", // Root path - client will specify full path
   proxied: true,
   allow_discovery: true,
 });
