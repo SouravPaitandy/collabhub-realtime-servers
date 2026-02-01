@@ -240,13 +240,14 @@ wss.on("connection", (conn, req) => {
 server.on("upgrade", (request, socket, head) => {
   const { pathname } = new URL(request.url, `http://${request.headers.host}`);
 
-  // If the path is for Socket.IO, it's handled automatically.
-  // If it's for our Yjs WebSocket, we handle it here.
-  if (pathname !== "/socket.io/") {
+  // Filter out Socket.IO and PeerJS paths - only handle YJS documents
+  if (pathname !== "/socket.io/" && !pathname.startsWith("/peerjs")) {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request);
     });
   }
+  // PeerJS handles its own WebSocket connections internally
+  // Socket.IO handles its own connections automatically
 });
 
 const interval = setInterval(() => {
