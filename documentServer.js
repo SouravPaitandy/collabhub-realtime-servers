@@ -50,7 +50,7 @@ server.on("request", (req, res) => {
         connections: connections,
         uptime: process.uptime(),
         memory: process.memoryUsage(),
-      })
+      }),
     );
     return;
   }
@@ -141,7 +141,7 @@ if (logToFile && !fs.existsSync(logDir)) {
   } catch (err) {
     console.error(
       "Could not create log directory, logging to console only:",
-      err.message
+      err.message,
     );
   }
 }
@@ -156,7 +156,7 @@ const log = (message) => {
     try {
       fs.appendFileSync(
         path.join(logDir, "document-server.log"),
-        formattedMessage + "\n"
+        formattedMessage + "\n",
       );
     } catch (err) {
       console.error("Could not write to log file:", err.message);
@@ -226,7 +226,7 @@ wss.on("connection", (conn, req) => {
   const clientIP = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
 
   log(
-    `New connection from ${clientIP} to document: ${docName} (${connections} total)`
+    `New connection from ${clientIP} to document: ${docName} (${connections} total)`,
   );
 
   // Handle disconnect
@@ -293,12 +293,12 @@ process.on("SIGTERM", () => {
 // --- NEW: PEERJS SERVER INTEGRATION ---
 const { PeerServer } = require("peer");
 
+// Integrate PeerJS with the existing HTTP server
 const peerServer = PeerServer({
-  port: 3001,
-  path: "/",
+  port: 9000, // This is the internal peerjs port, not exposed externally
+  path: "/peerjs",
   proxied: true,
   allow_discovery: true,
-  debug: true,
 });
 
 peerServer.on("connection", (client) => {
@@ -309,5 +309,5 @@ peerServer.on("disconnect", (client) => {
   log(`PeerJS Client disconnected: ${client.getId()}`);
 });
 
-log("PeerJS Server running on port 3001");
+log(`PeerJS Server running on /peerjs path`);
 // --- END: PEERJS SERVER INTEGRATION ---
