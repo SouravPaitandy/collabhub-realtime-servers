@@ -28,7 +28,7 @@ const server = http.createServer((request, response) => {
   // Enable CORS headers
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Access-Control-Request-Method", "*");
-  response.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET");
+  response.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
   response.setHeader("Access-Control-Allow-Headers", "*");
 
   if (request.method === "OPTIONS") {
@@ -37,11 +37,18 @@ const server = http.createServer((request, response) => {
     return;
   }
 
+  // Handle PeerJS requests (will be set up later after server is created)
+  if (request.url.startsWith("/peerjs")) {
+    // PeerJS middleware will handle this
+    return;
+  }
+
   response.writeHead(200, { "Content-Type": "text/plain" });
   response.end("CollabHub document collaboration server is running");
 });
 
 server.on("request", (req, res) => {
+  // Health check endpoint
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(
@@ -54,6 +61,9 @@ server.on("request", (req, res) => {
     );
     return;
   }
+
+  // Handle PeerJS HTTP requests (WebSocket will be handled in upgrade event)
+  // Note: PeerServer will be initialized later and will handle its own requests
 });
 
 // --- START: NEW CHAT SERVER LOGIC ---
@@ -294,9 +304,9 @@ process.on("SIGTERM", () => {
 // --- NEW: PEERJS SERVER INTEGRATION ---
 const { PeerServer } = require("peer");
 
-// Integrate PeerJS with the existing HTTP server
+// Attach PeerJS to the existing HTTP server (not on separate port)
 const peerServer = PeerServer({
-  port: 9000, // This is the internal peerjs port, not exposed externally
+  server: server, // Attach to our existing HTTP server
   path: "/peerjs",
   proxied: true,
   allow_discovery: true,
@@ -310,5 +320,5 @@ peerServer.on("disconnect", (client) => {
   log(`PeerJS Client disconnected: ${client.getId()}`);
 });
 
-log(`PeerJS Server running on /peerjs path`);
+log(`PeerJS Server integrated on /peerjs path`);
 // --- END: PEERJS SERVER INTEGRATION ---
