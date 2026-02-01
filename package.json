@@ -8,8 +8,12 @@
         "dev": "nodemon documentServer.js"
     },
     "dependencies": {
+        "dotenv": "^17.2.3",
+        "mongoose": "^9.0.2",
+        "peer": "^1.0.2",
         "socket.io": "^4.8.1",
         "ws": "^8.13.0",
+        "y-mongodb-provider": "^0.2.1",
         "y-websocket": "^1.5.0",
         "yjs": "^13.6.4"
     },
