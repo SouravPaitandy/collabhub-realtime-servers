@@ -246,8 +246,44 @@ wss.on("connection", (conn, req) => {
   });
 });
 
-// NOTE: Removed custom upgrade handler - PeerServer handles its own WebSocket upgrades
-// The server.on("upgrade") was preventing PeerJS from working
+// Create PeerServer first (before upgrade handler needs it)
+const { PeerServer } = require("peer");
+const peerServer = PeerServer({
+  server: server,
+  path: "/peerjs",
+  proxied: true,
+  allow_discovery: true,
+});
+
+peerServer.on("connection", (client) => {
+  log(`PeerJS Client connected: ${client.getId()}`);
+});
+
+peerServer.on("disconnect", (client) => {
+  log(`PeerJS Client disconnected: ${client.getId()}`);
+});
+
+log(`PeerJS Server integrated on /peerjs path`);
+
+// Smart WebSocket upgrade handler - routes to appropriate service
+server.on("upgrade", (request, socket, head) => {
+  const { pathname } = new URL(request.url, `http://${request.headers.host}`);
+
+  log(`WebSocket upgrade request for path: ${pathname}`);
+
+  // Route to appropriate service based on path
+  if (pathname.startsWith("/peerjs")) {
+    // PeerJS handles its own upgrades - it's already attached to server
+    // Just let it through (don't call wss.handleUpgrade)
+    return;
+  } else if (!pathname.startsWith("/socket.io/")) {
+    // Route to YJS WebSocket server
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  }
+  // Socket.IO handles its own upgrades automatically
+});
 
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
@@ -289,25 +325,3 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
-
-// --- NEW: PEERJS SERVER INTEGRATION ---
-const { PeerServer } = require("peer");
-
-// Attach PeerJS to the existing HTTP server (not on separate port)
-const peerServer = PeerServer({
-  server: server, // Attach to our existing HTTP server
-  path: "/peerjs",
-  proxied: true,
-  allow_discovery: true,
-});
-
-peerServer.on("connection", (client) => {
-  log(`PeerJS Client connected: ${client.getId()}`);
-});
-
-peerServer.on("disconnect", (client) => {
-  log(`PeerJS Client disconnected: ${client.getId()}`);
-});
-
-log(`PeerJS Server integrated on /peerjs path`);
-// --- END: PEERJS SERVER INTEGRATION ---
