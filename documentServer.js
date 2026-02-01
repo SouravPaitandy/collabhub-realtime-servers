@@ -246,19 +246,8 @@ wss.on("connection", (conn, req) => {
   });
 });
 
-// Upgrade HTTP connections to WebSocket
-server.on("upgrade", (request, socket, head) => {
-  const { pathname } = new URL(request.url, `http://${request.headers.host}`);
-
-  // Filter out Socket.IO and PeerJS paths - only handle YJS documents
-  if (pathname !== "/socket.io/" && !pathname.startsWith("/peerjs")) {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-  }
-  // PeerJS handles its own WebSocket connections internally
-  // Socket.IO handles its own connections automatically
-});
+// NOTE: Removed custom upgrade handler - PeerServer handles its own WebSocket upgrades
+// The server.on("upgrade") was preventing PeerJS from working
 
 const interval = setInterval(() => {
   wss.clients.forEach((ws) => {
