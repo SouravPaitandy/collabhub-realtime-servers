@@ -1,26 +1,29 @@
 {
-    "name": "collabhub-realtime-servers",
-    "version": "1.0.0",
-    "description": "Real-time servers for CollabHub",
-    "main": "documentServer.js",
-    "scripts": {
-        "start": "node documentServer.js",
-        "dev": "nodemon documentServer.js"
-    },
-    "dependencies": {
-        "dotenv": "^17.2.3",
-        "mongoose": "^9.0.2",
-        "peer": "^1.0.2",
-        "socket.io": "^4.8.1",
-        "ws": "^8.13.0",
-        "y-mongodb-provider": "^0.2.1",
-        "y-websocket": "^1.5.0",
-        "yjs": "^13.6.4"
-    },
-    "devDependencies": {
-        "nodemon": "^3.1.10"
-    },
-    "engines": {
-        "node": ">=16.0.0"
-    }
+  "name": "collabhub-realtime-servers",
+  "version": "1.0.0",
+  "description": "Real-time servers for CollabHub",
+  "main": "documentServer.js",
+  "scripts": {
+    "start": "node documentServer.js",
+    "start:doc": "node documentServer.js",
+    "start:peer": "node peerServer.js",
+    "dev": "nodemon documentServer.js",
+    "dev:peer": "nodemon peerServer.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "mongoose": "^9.0.2",
+    "peer": "^1.0.2",
+    "socket.io": "^4.8.1",
+    "ws": "^8.13.0",
+    "y-mongodb-provider": "^0.2.1",
+    "y-websocket": "^1.5.0",
+    "yjs": "^13.6.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
 }

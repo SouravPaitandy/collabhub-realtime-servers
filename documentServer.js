@@ -37,12 +37,6 @@ const server = http.createServer((request, response) => {
     return;
   }
 
-  // Handle PeerJS requests (will be set up later after server is created)
-  if (request.url.startsWith("/peerjs")) {
-    // PeerJS middleware will handle this
-    return;
-  }
-
   response.writeHead(200, { "Content-Type": "text/plain" });
   response.end("CollabHub document collaboration server is running");
 });
@@ -61,9 +55,6 @@ server.on("request", (req, res) => {
     );
     return;
   }
-
-  // Handle PeerJS HTTP requests (WebSocket will be handled in upgrade event)
-  // Note: PeerServer will be initialized later and will handle its own requests
 });
 
 // --- START: NEW CHAT SERVER LOGIC ---
@@ -129,6 +120,22 @@ io.on("connection", (socket) => {
   socket.on("leave-video-room", (roomId, peerId) => {
     socket.to(roomId).emit("user-disconnected", peerId);
   });
+
+  // Handle media status updates (mute/video off)
+  socket.on(
+    "update-media-status",
+    ({ roomId, peerId, isMuted, isVideoOff }) => {
+      console.log(`[Socket.IO] Media status update from ${peerId}:`, {
+        isMuted,
+        isVideoOff,
+      });
+      socket.to(roomId).emit("peer-media-status-changed", {
+        peerId,
+        isMuted,
+        isVideoOff,
+      });
+    },
+  );
   // --- END: VIDEO CONFERENCING SIGNALING ---
 });
 
@@ -246,43 +253,19 @@ wss.on("connection", (conn, req) => {
   });
 });
 
-// Create PeerServer first (before upgrade handler needs it)
-const { PeerServer } = require("peer");
-const peerServer = PeerServer({
-  server: server,
-  path: "/", // Root path - client will specify full path
-  proxied: true,
-  allow_discovery: true,
-});
-
-peerServer.on("connection", (client) => {
-  log(`PeerJS Client connected: ${client.getId()}`);
-});
-
-peerServer.on("disconnect", (client) => {
-  log(`PeerJS Client disconnected: ${client.getId()}`);
-});
-
-log(`PeerJS Server integrated on /peerjs path`);
-
-// Smart WebSocket upgrade handler - routes to appropriate service
+// WebSocket upgrade handler - routes to YJS (Socket.IO handles itself)
 server.on("upgrade", (request, socket, head) => {
   const { pathname } = new URL(request.url, `http://${request.headers.host}`);
 
   log(`WebSocket upgrade request for path: ${pathname}`);
 
-  // Route to appropriate service based on path
-  if (pathname.startsWith("/peerjs")) {
-    // PeerJS handles its own upgrades - it's already attached to server
-    // Just let it through (don't call wss.handleUpgrade)
-    return;
-  } else if (!pathname.startsWith("/socket.io/")) {
-    // Route to YJS WebSocket server
+  // Only route non-Socket.IO connections to YJS
+  // Socket.IO handles its own upgrades automatically
+  if (!pathname.startsWith("/socket.io/")) {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request);
     });
   }
-  // Socket.IO handles its own upgrades automatically
 });
 
 const interval = setInterval(() => {
