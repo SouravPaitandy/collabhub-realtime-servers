@@ -11,16 +11,33 @@ const { MongodbPersistence } = require("y-mongodb-provider");
 const Y = require("yjs");
 
 // Enable cross-origin support and production configuration
-// Enable cross-origin support and production configuration
 const PORT = process.env.PORT || 8080;
 const MONGODB_URI = process.env.MONGODB_URI;
+
+// Track client connections (declare early to avoid reference errors)
+let connections = 0;
+
+// Global error handlers
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  // Don't exit - let the service continue running
+});
 
 // Connect to MongoDB
 if (MONGODB_URI) {
   mongoose
     .connect(MONGODB_URI)
-    .then(() => console.log("Connected to MongoDB"))
-    .catch((err) => console.error("MongoDB connection error:", err));
+    .then(() => console.log("✅ Connected to MongoDB"))
+    .catch((err) => {
+      console.error("❌ MongoDB connection error:", err);
+      console.log("⚠️  Server will continue without MongoDB persistence");
+    });
+} else {
+  console.log("⚠️  No MONGODB_URI found - running without persistence");
 }
 
 // HTTP server
@@ -37,24 +54,23 @@ const server = http.createServer((request, response) => {
     return;
   }
 
-  response.writeHead(200, { "Content-Type": "text/plain" });
-  response.end("CollabHub document collaboration server is running");
-});
-
-server.on("request", (req, res) => {
   // Health check endpoint
-  if (req.url === "/health") {
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(
+  if (request.url === "/health") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(
       JSON.stringify({
         status: "ok",
         connections: connections,
         uptime: process.uptime(),
         memory: process.memoryUsage(),
+        mongoConnected: mongoose.connection.readyState === 1,
       }),
     );
     return;
   }
+
+  response.writeHead(200, { "Content-Type": "text/plain" });
+  response.end("CollabHub document collaboration server is running");
 });
 
 // --- START: NEW CHAT SERVER LOGIC ---
@@ -180,9 +196,6 @@ const log = (message) => {
     }
   }
 };
-
-// Track client connections
-let connections = 0;
 
 // Initialize MongoDB persistence once if URI is available
 let mdb = null;
