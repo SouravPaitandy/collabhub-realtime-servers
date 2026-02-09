@@ -112,8 +112,9 @@ io.on("connection", (socket) => {
 
   // --- NEW: REACTION EVENT LISTENER ---
   socket.on("send_reaction", (data) => {
-    // Broadcast the reaction to all clients in the room
-    socket.to(data.collabId).emit("receive_reaction", data);
+    log(`Reaction event: ${data.messageId} in room ${data.collabId}`);
+    // Broadcast to ALL clients in the room (including sender)
+    io.to(data.collabId).emit("receive_reaction", data);
   });
 
   // Handle client disconnection
